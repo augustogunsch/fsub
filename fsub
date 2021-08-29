@@ -43,5 +43,5 @@ BEGIN {
 	print time
 	for(j = 0; j < linen; j++)
 		print lines[j]
-}' $1 > /tmp/fsub
+}' $1 | sed 's/\r//' > /tmp/fsub
 mv /tmp/fsub $1
