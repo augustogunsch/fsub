@@ -1,0 +1,47 @@
+#!/bin/sh
+set -e
+
+FSUBRC=~/.config/fsubrc
+
+usage() {
+	echo "usage: fsub <file>"
+	echo "fsub expects $FSUBRC to have a blacklist of words"
+	exit 1
+}
+
+[ -z $1 ] && usage
+[ -f $1 ] || usage
+[ -z $2 ] || usage
+[ -f $FSUBRC ] || touch $FSUBRC
+
+awk '
+BEGIN {
+	n = 1
+	i = 0
+	while(getline < "'$FSUBRC'") {
+		blacklist[i] = $0
+		i++
+	}
+}
+/^[[:digit:]]+[[:space:]]*$/ { 
+	getline
+	time = $0
+
+	linen = 0
+	while(getline) {
+		lines[linen] = $0
+		linen++
+		if($0 ~ /^[[:space:]]*$/) break
+	}
+
+	for(j = 0; j < i; j++)
+		for(k = 0; k < linen; k++)
+			if(lines[k] ~ blacklist[j]) next
+
+	print n
+	n++
+	print time
+	for(j = 0; j < linen; j++)
+		print lines[j]
+}' $1 > /tmp/fsub
+mv /tmp/fsub $1
