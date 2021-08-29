@@ -6,4 +6,4 @@
 
 # Features
 - Fixes subtitle numbering
-- Removes lines which have words listed in ~/.config/fsubrc
+- Removes lines which have words listed in `~/.config/fsubrc`
