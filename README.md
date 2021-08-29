@@ -7,3 +7,4 @@
 # Features
 - Fixes subtitle numbering
 - Removes lines which have words listed in `~/.config/fsubrc`
+- Backs up the file to a .bak (removed when no error happens)

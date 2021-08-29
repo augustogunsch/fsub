@@ -14,6 +14,7 @@ usage() {
 [ -z $2 ] || usage
 [ -f $FSUBRC ] || touch $FSUBRC
 
+cp $1 $1.bak
 awk '
 BEGIN {
 	n = 1
@@ -45,3 +46,4 @@ BEGIN {
 		print lines[j]
 }' $1 | sed 's/\r//' > /tmp/fsub
 mv /tmp/fsub $1
+rm $1.bak
