@@ -4,44 +4,56 @@ set -e
 FSUBRC=~/.config/fsubrc
 
 usage() {
-	echo "usage: fsub <file>"
+	echo "usage: fsub <files>"
 	echo "fsub expects $FSUBRC to have a blacklist of words"
 	exit 1
 }
 
 [ -z "$1" ] && usage
-[ -f "$1" ] || usage
-[ -z "$2" ] || usage
+
+for arg in "$@"; do
+	if [ ! -f "$arg" ]; then
+		echo "$arg is not a file"
+		usage
+	fi
+	if [ "${arg: -4}" != ".srt" ]; then
+		echo "$arg is not a .srt file"
+		usage
+	fi
+done
+
 [ -f "$FSUBRC" ] || touch $FSUBRC
 
-awk '
-BEGIN {
-	n = 1
-	i = 0
-	while(getline < "'$FSUBRC'") {
-		blacklist[i] = $0
-		i++
+for arg in "$@"; do
+	awk '
+	BEGIN {
+		n = 1
+		i = 0
+		while(getline < "'$FSUBRC'") {
+			blacklist[i] = $0
+			i++
+		}
 	}
-}
-/^[[:digit:]]+[[:space:]]*$/ { 
-	getline
-	time = $0
+	/^[[:digit:]]+[[:space:]]*$/ { 
+		getline
+		time = $0
 
-	linen = 0
-	while(getline) {
-		lines[linen] = $0
-		linen++
-		if($0 ~ /^[[:space:]]*$/) break
-	}
+		linen = 0
+		while(getline) {
+			lines[linen] = $0
+			linen++
+			if($0 ~ /^[[:space:]]*$/) break
+		}
 
-	for(j = 0; j < i; j++)
-		for(k = 0; k < linen; k++)
-			if(lines[k] ~ blacklist[j]) next
+		for(j = 0; j < i; j++)
+			for(k = 0; k < linen; k++)
+				if(lines[k] ~ blacklist[j]) next
 
-	print n
-	n++
-	print time
-	for(j = 0; j < linen; j++)
-		print lines[j]
-}' "$1" | sed 's/\r//' > /tmp/fsub
-mv /tmp/fsub "$1"
+		print n
+		n++
+		print time
+		for(j = 0; j < linen; j++)
+			print lines[j]
+	}' "$arg" | sed 's/\r//' > /tmp/fsub
+	mv /tmp/fsub "$arg"
+done

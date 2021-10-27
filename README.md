@@ -1,5 +1,5 @@
 # fsub
-`fsub` is a very simple script (less than 50 lines of code) for cleaning a .srt file
+`fsub` is a very simple script (less than 60 lines of code) for cleaning a .srt file
 
 # Usage
 `fsub <file>`
