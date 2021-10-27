@@ -12,14 +12,14 @@ usage() {
 [ -z "$1" ] && usage
 
 for arg in "$@"; do
-	if [ ! -f "$arg" ]; then
-		echo "$arg is not a file"
-		usage
-	fi
-	if [ "${arg: -4}" != ".srt" ]; then
-		echo "$arg is not a .srt file"
-		usage
-	fi
+	case "$arg" in
+		*.srt ) 
+			if [ ! -f "$arg" ]; then
+				echo "$arg is not a file"
+				usage
+			fi ;;
+		*) echo "$arg is not a .srt file"; usage ;;
+	esac
 done
 
 [ -f "$FSUBRC" ] || touch $FSUBRC
