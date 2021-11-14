@@ -186,6 +186,7 @@ def process_file(args, file):
     output = open(file.name, 'w', encoding='utf-8')
     output.write(contents)
     output.write(os.linesep)
+    output.close()
 
 
 def main():
@@ -196,7 +197,7 @@ def main():
 
     parser.add_argument(
         '-c', '--clean',
-        help='removes subtitles matching regular expressions ' +
+        help='remove subtitles matching regular expressions ' +
              'listed in ~/.config/fsubrc (this is the default ' +
              'behavior if no other flag is passed)',
         action='store_true'
@@ -204,7 +205,7 @@ def main():
 
     parser.add_argument(
         '-s', '--shift',
-        help='shifts all subtitles by MS milliseconds, which ' +
+        help='shift all subtitles by MS milliseconds, which ' +
              'may be positive or negative',
         metavar='MS',
         action='store',
@@ -213,13 +214,13 @@ def main():
 
     parser.add_argument(
         '-n', '--no-html',
-        help='strips HTML tags from subtitles content',
+        help='strip HTML tags from subtitles content',
         action='store_true'
     )
 
     parser.add_argument(
         '-f', '--config-file',
-        help='overwrites the default config file (~/.config/fsubrc)',
+        help='overwrite the default config file (~/.config/fsubrc)',
         metavar='FILE',
         action='store',
         type=argparse.FileType('r')
