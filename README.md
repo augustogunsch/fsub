@@ -9,7 +9,7 @@ pip install fsub
 
 # Usage
 ```
-usage: fsub.py [-h] [-c] [-s MS] [-n] [-f FILE] file [file ...]
+usage: fsub [-h] [-c] [-s MS] [-n] [-f FILE] file [file ...]
 
 Fix, edit and clean SubRip (.srt) files.
 

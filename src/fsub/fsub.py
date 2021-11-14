@@ -211,6 +211,7 @@ def read_expressions(args):
 
 def main():
     parser = argparse.ArgumentParser(
+        prog='fsub',
         description='Fix, edit and clean SubRip (.srt) files.',
         add_help=True
     )
