@@ -98,12 +98,13 @@ class Subtitle:
         )
 
 
-def clean(subs):
+def clean(subs, cfg):
     # Read expressions in ~/.config/fsubrc
-    fsubrc = open(os.getenv('HOME') + '/.config/fsubrc', 'r')
-    lines = re.split(r'\r?\n', fsubrc.read().strip())
+    if not cfg:
+        cfg = open(os.getenv('HOME') + '/.config/fsubrc', 'r')
+    lines = re.split(r'\r?\n', cfg.read().strip())
     expressions = list(map(re.compile, lines))
-    fsubrc.close()
+    cfg.close()
 
     # Cancel if no expression
     if len(expressions) == 0:
@@ -162,7 +163,7 @@ def process_file(args, file):
 
     # Clean if --clean is passed
     if args.clean:
-        subs_objs = clean(subs_objs)
+        subs_objs = clean(subs_objs, args.config_file)
 
     # Shift if --shift is passed
     if args.shift:
@@ -216,6 +217,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '-f', '--config-file',
+    help='overwrites the default config file (~/.config/fsubrc)',
+    metavar='FILE',
+    action='store',
+    type=argparse.FileType('r')
+)
+
+parser.add_argument(
     'files',
     help='list of input files (they all must be SubRip files)',
     metavar='file',
@@ -228,6 +237,11 @@ args = parser.parse_args()
 # Make sure --clean is the default
 if not args.shift and not args.no_html:
     args.clean = True
+
+# Validate options
+if not args.clean and args.config_file:
+    print('-f requires -c', file=sys.stderr)
+    exit(1)
 
 # Check if all files are .srt
 for file in args.files:
