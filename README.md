@@ -1,6 +1,12 @@
 # fsub
 `fsub` is a Python script for cleaning, editing and fixing a SubRip (.srt) file
 
+# Installation
+Through Python's pip:
+```
+pip install fsub
+```
+
 # Usage
 ```
 usage: fsub [-h] [-c] [-s MS] [-n] [-f FILE] file [file ...]

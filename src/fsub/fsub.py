@@ -188,67 +188,72 @@ def process_file(args, file):
     output.write(os.linesep)
 
 
-parser = argparse.ArgumentParser(
-    description='Fix, edit and clean SubRip (.srt) files.',
-    add_help=True
-)
+def main():
+    parser = argparse.ArgumentParser(
+        description='Fix, edit and clean SubRip (.srt) files.',
+        add_help=True
+    )
 
-parser.add_argument(
-    '-c', '--clean',
-    help='removes subtitles matching regular expressions ' +
-         'listed in ~/.config/fsubrc (this is the default ' +
-         'behavior if no other flag is passed)',
-    action='store_true'
-)
+    parser.add_argument(
+        '-c', '--clean',
+        help='removes subtitles matching regular expressions ' +
+             'listed in ~/.config/fsubrc (this is the default ' +
+             'behavior if no other flag is passed)',
+        action='store_true'
+    )
 
-parser.add_argument(
-    '-s', '--shift',
-    help='shifts all subtitles by MS milliseconds, which ' +
-         'may be positive or negative',
-    metavar='MS',
-    action='store',
-    type=int
-)
+    parser.add_argument(
+        '-s', '--shift',
+        help='shifts all subtitles by MS milliseconds, which ' +
+             'may be positive or negative',
+        metavar='MS',
+        action='store',
+        type=int
+    )
 
-parser.add_argument(
-    '-n', '--no-html',
-    help='strips HTML tags from subtitles content',
-    action='store_true'
-)
+    parser.add_argument(
+        '-n', '--no-html',
+        help='strips HTML tags from subtitles content',
+        action='store_true'
+    )
 
-parser.add_argument(
-    '-f', '--config-file',
-    help='overwrites the default config file (~/.config/fsubrc)',
-    metavar='FILE',
-    action='store',
-    type=argparse.FileType('r')
-)
+    parser.add_argument(
+        '-f', '--config-file',
+        help='overwrites the default config file (~/.config/fsubrc)',
+        metavar='FILE',
+        action='store',
+        type=argparse.FileType('r')
+    )
 
-parser.add_argument(
-    'files',
-    help='list of input files (they all must be SubRip files)',
-    metavar='file',
-    type=argparse.FileType('rb+'),
-    nargs='+'
-)
+    parser.add_argument(
+        'files',
+        help='list of input files (they all must be SubRip files)',
+        metavar='file',
+        type=argparse.FileType('rb+'),
+        nargs='+'
+    )
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-# Make sure --clean is the default
-if not args.shift and not args.no_html:
-    args.clean = True
+    # Make sure --clean is the default
+    if not args.shift and not args.no_html:
+        args.clean = True
 
-# Validate options
-if not args.clean and args.config_file:
-    print('-f requires -c', file=sys.stderr)
-    exit(1)
+    # Validate options
+    if not args.clean and args.config_file:
+        print('-f requires -c', file=sys.stderr)
+        exit(1)
 
-# Check if all files are .srt
-for file in args.files:
-    if file.name[-4:] != '.srt':
-        print('File {} is not a SubRip file'.format(file.name),
-              file=sys.stderr)
-        sys.exit(1)
+    # Check if all files are .srt
+    for file in args.files:
+        if file.name[-4:] != '.srt':
+            print('File {} is not a SubRip file'.format(file.name),
+                  file=sys.stderr)
+            sys.exit(1)
 
-for file in args.files:
-    process_file(args, file)
+    for file in args.files:
+        process_file(args, file)
+
+
+if __name__ == '__main__':
+    main()
