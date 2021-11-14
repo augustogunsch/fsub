@@ -26,6 +26,7 @@ import argparse
 import re
 import chardet
 import os
+import pathlib
 
 
 class Time:
@@ -91,24 +92,17 @@ class Subtitle:
         return False
 
     def __repr__(self):
-        return '{}{}{} --> {}{}{}'.format(
-                self.number, os.linesep,
+        return '{}\n{} --> {}\n{}'.format(
+                self.number,
                 self.time_start, self.time_end,
-                os.linesep, os.linesep.join(self.content)
+                '\n'.join(self.content)
         )
 
 
-def clean(subs, cfg):
-    # Read expressions in ~/.config/fsubrc
-    if not cfg:
-        cfg = open(os.getenv('HOME') + '/.config/fsubrc', 'r')
-    lines = re.split(r'\r?\n', cfg.read().strip())
-    expressions = list(map(re.compile, lines))
-    cfg.close()
-
+def clean(subs, expressions):
     # Cancel if no expression
     if len(expressions) == 0:
-        return
+        return subs
 
     # Remove lines matching any expression
     for regexp in expressions:
@@ -126,10 +120,10 @@ def shift(subs, ms):
 def strip_html(subs):
     for sub in subs:
         for i in range(0, len(sub.content)):
-            sub.content[i] = re.sub('<.+>', '', sub.content[i])
+            sub.content[i] = re.sub('<.+?>', '', sub.content[i])
 
 
-def process_file(args, file):
+def process_file(args, file, expressions):
     # Read the input file
     contents = file.read()
     file.close()
@@ -163,7 +157,7 @@ def process_file(args, file):
 
     # Clean if --clean is passed
     if args.clean:
-        subs_objs = clean(subs_objs, args.config_file)
+        subs_objs = clean(subs_objs, expressions)
 
     # Shift if --shift is passed
     if args.shift:
@@ -180,13 +174,39 @@ def process_file(args, file):
         i += 1
 
     # Join Subtitle objects back to a string
-    contents = (os.linesep + os.linesep).join(map(repr, subs_objs))
+    contents = '\n\n'.join(map(repr, subs_objs))
 
     # Write output
     output = open(file.name, 'w', encoding='utf-8')
     output.write(contents)
-    output.write(os.linesep)
+    output.write('\n')
     output.close()
+
+
+def read_expressions(args):
+    if args.clean:
+        cfg = args.config_file
+
+        # Open default config file if not specified
+        if not args.config_file:
+            home = pathlib.Path.home()
+            try:
+                if type(home) is pathlib.PosixPath:
+                    cfg = open(str(home) + '/.config/fsubrc', 'r')
+                elif type(home) is pathlib.WindowsPath:
+                    cfg = open(os.getenv('APPDATA') + r'\fsubrc', 'r')
+                else:
+                    print('Unsupported operating system', file=sys.stderr)
+                    sys.exit(1)
+            except FileNotFoundError:
+                return []
+
+        # Read expressions
+        lines = re.split(r'\r?\n', cfg.read().strip())
+        expressions = list(map(re.compile, lines))
+        cfg.close()
+        return expressions
+    return []
 
 
 def main():
@@ -198,7 +218,7 @@ def main():
     parser.add_argument(
         '-c', '--clean',
         help='remove subtitles matching regular expressions ' +
-             'listed in ~/.config/fsubrc (this is the default ' +
+             'listed in the config file (this is the default ' +
              'behavior if no other flag is passed)',
         action='store_true'
     )
@@ -220,7 +240,8 @@ def main():
 
     parser.add_argument(
         '-f', '--config-file',
-        help='overwrite the default config file (~/.config/fsubrc)',
+        help='overwrite the default config file (Unix: $HOME/.config/fsubrc,' +
+             r' Windows: %%APPDATA%%\fsubrc)',
         metavar='FILE',
         action='store',
         type=argparse.FileType('r')
@@ -252,8 +273,10 @@ def main():
                   file=sys.stderr)
             sys.exit(1)
 
+    expressions = read_expressions(args)
+
     for file in args.files:
-        process_file(args, file)
+        process_file(args, file, expressions)
 
 
 if __name__ == '__main__':
