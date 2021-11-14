@@ -91,10 +91,10 @@ class Subtitle:
         return False
 
     def __repr__(self):
-        return '{}\n{} --> {}\n{}'.format(
-                self.number,
+        return '{}{}{} --> {}{}{}'.format(
+                self.number, os.linesep,
                 self.time_start, self.time_end,
-                os.linesep.join(self.content)
+                os.linesep, os.linesep.join(self.content)
         )
 
 
