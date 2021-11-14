@@ -18,14 +18,14 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -c, --clean           removes subtitles matching regular expressions listed in
+  -c, --clean           remove subtitles matching regular expressions listed in
                         ~/.config/fsubrc (this is the default behavior if no other flag is
                         passed)
-  -s MS, --shift MS     shifts all subtitles by MS milliseconds, which may be positive or
+  -s MS, --shift MS     shift all subtitles by MS milliseconds, which may be positive or
                         negative
-  -n, --no-html         strips HTML tags from subtitles content
+  -n, --no-html         strip HTML tags from subtitles content
   -f FILE, --config-file FILE
-                        overwrites the default config file (~/.config/fsubrc)
+                        overwrite the default config file (~/.config/fsubrc)
 ```
 
 # Features
