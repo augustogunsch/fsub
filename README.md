@@ -31,7 +31,7 @@ optional arguments:
 ```
 
 # Testing
-Run all the tests with:
+In the project's root directory, run all the tests with:
 ```
 python -m unittest tests
 ```
@@ -48,3 +48,4 @@ python -m unittest tests.integration
 - May remove subtitles containing lines that match any regular expression listed in the config file (by default on Unix: `$HOME/.config/fsubrc`; on Windows: `%APPDATA%\fsubrc`)
 - May shift the time of all subtitles
 - May strip HTML
+- May join files together
