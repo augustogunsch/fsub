@@ -327,10 +327,11 @@ def parse_args(args):
         action='store_true'
     )
 
+    # Requires --clean
     parser.add_argument(
         '-f', '--config',
-        help='use F as the config file (by default, F is: ' +
-             r'on Unix: $HOME/.config/fsubrc; on Windows: %%APPDATA%%\fsubrc)',
+        help='use F as the config file (by default, on Unix it is: "$HOME/' +
+             r'.config/fsubrc"; on Windows it is: "%%APPDATA%%\fsubrc")',
         metavar='F',
         action='store',
         type=argparse.FileType('r')
@@ -342,9 +343,27 @@ def parse_args(args):
         action='store_true'
     )
 
+    # Requires --begin
     parser.add_argument(
+        '-u', '--cut-out',
+        help='cut out the specified section from the file(s), creating ' +
+             'for every input file a new one prefixed with "cut-" ' +
+             '(--join will join both the input files and the cutouts)',
+        action='store_true'
+    )
+
+    redirection = parser.add_mutually_exclusive_group()
+    redirection.add_argument(
         '-r', '--replace',
-        help='edit files in-place (-j will delete joined files too)',
+        help='edit files in-place (--join will delete joined files too), ' +
+             'instead of the default behavior of outputing results into ' +
+             'files prefixed with "out-"',
+        action='store_true'
+    )
+
+    redirection.add_argument(
+        '-p', '--stdout',
+        help='dump results to stdout, and do not edit nor write any file',
         action='store_true'
     )
 
@@ -354,6 +373,30 @@ def parse_args(args):
         metavar='file',
         type=argparse.FileType('rb+'),
         nargs='+'
+    )
+
+    section = parser.add_argument_group(
+        'sectioning',
+        'Flags that specify a section to work in. They accept either ' +
+        'a subtitle number or a time stamp in the SubRip format ' +
+        '("<hours>:<minutes>:<seconds>,<milliseconds>", where hours, minutes' +
+        ', seconds are 2-zero padded while milliseconds is 3-zero padded).' +
+        ' fsub will not modify subtitles outside this range, except while ' +
+        'joining the files.'
+    )
+
+    section.add_argument(
+        '-b', '--begin',
+        help='specify section beginning (by default, beginning of file)',
+        metavar='B',
+        action='store'
+    )
+
+    section.add_argument(
+        '-e', '--end',
+        help='specify section end (by default, end of file)',
+        metavar='E',
+        action='store'
     )
 
     args = parser.parse_args(args)
@@ -388,6 +431,7 @@ def run(args):
             except IndexError:
                 break
         parsed_files.append(first)
+        first.renumber()
 
     for file in parsed_files:
         file.process(args, config)
