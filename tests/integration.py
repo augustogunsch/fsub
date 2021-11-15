@@ -9,7 +9,7 @@ from pathlib import Path
 class TestFsub(unittest.TestCase):
     samples = Path('tests/samples')
 
-    def run_on(self, args, samples, ofiles):
+    def run_on(self, args, samples, ofiles, replace=False):
         caller = inspect.stack()[1][3]
         ifiles = []
 
@@ -27,6 +27,9 @@ class TestFsub(unittest.TestCase):
         limit = len(ofiles)
         for i, ifile in enumerate(ifiles):
             if i < limit:
+                if not replace:
+                    os.remove(ifile)
+                    ifile = 'out-' + ifile
                 out = open(ifile)
                 result = out.read()
                 out.close()
@@ -37,7 +40,10 @@ class TestFsub(unittest.TestCase):
                 cmp_file.close()
 
                 self.assertEqual(result, cmp)
-            os.remove(ifile)
+            try:
+                os.remove(ifile)
+            except FileNotFoundError:
+                pass
 
     def test_cleaned(self):
         args = ['-f', str(self.samples / 'blacklist')]

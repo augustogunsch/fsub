@@ -9,25 +9,23 @@ pip install fsub
 
 # Usage
 ```
-usage: fsub [-h] [-c] [-s MS] [-n] [-f FILE] [-j] file [file ...]
+usage: fsub [-h] [-c] [-s MS] [-n] [-f F] [-j] [-r] file [file ...]
 
 Fix, edit and clean SubRip (.srt) files.
 
 positional arguments:
-  file                  list of input files (they all must be SubRip files)
+  file               list of input files (they all must be SubRip files)
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -c, --clean           remove subtitles matching regular expressions listed in the config
-                        file (this is the default behavior if no other flag is passed)
-  -s MS, --shift MS     shift all subtitles by MS milliseconds, which may be positive or
-                        negative
-  -n, --no-html         strip HTML tags from subtitles content
-  -f FILE, --config-file FILE
-                        overwrite the default config file (Unix: $HOME/.config/fsubrc,
-                        Windows: %APPDATA%\fsubrc)
-  -j, --join            join all files into the first, shifting their time accordingly (this
-                        will delete files)
+  -h, --help         show this help message and exit
+  -c, --clean        remove subtitles matching regular expressions listed in the config file
+                     (this is the default behavior if no other flag is passed)
+  -s MS, --shift MS  shift all subtitles by MS milliseconds, which may be positive or negative
+  -n, --no-html      strip HTML tags from subtitles content
+  -f F, --config F   use F as the config file (by default, F is: on Unix:
+                     $HOME/.config/fsubrc; on Windows: %APPDATA%\fsubrc)
+  -j, --join         join all files into the first, shifting their time accordingly
+  -r, --replace      edit files in-place (-j will delete joined files too)
 ```
 
 # Testing
@@ -49,3 +47,4 @@ python -m unittest tests.integration
 - May shift the time of all subtitles
 - May strip HTML
 - May join files together
+- May edit files in-place

@@ -160,12 +160,12 @@ class ConfigFile:
     def __init__(self, args):
         # No reason to continue
         if not args.clean:
-            if args.config_file:
-                args.config_file.close()
+            if args.config:
+                args.config.close()
             self.expressions = []
             return
 
-        file = args.config_file
+        file = args.config
         # Set default config file if not specified
         if not file:
             home = Path.home()
@@ -272,14 +272,26 @@ class SubripFile:
             self.strip_html()
 
         self.renumber()
-        self.write_file()
+        self.write_file(args.replace)
 
-    def write_file(self):
-        output = open(self.file_name, 'w', encoding='utf-8')
+    def write_file(self, in_place=False, stdout=False):
+        if stdout:
+            print(self)
+            return
+
+        file = self.file_name if in_place else 'out-' + self.file_name
+
+        output = open(file, 'w', encoding='utf-8')
         output.write(repr(self))
+
         if len(self.subs) > 0:
             output.write('\n')
+
         output.close()
+
+    def delete(self):
+        os.remove(self.file_name)
+        del self
 
     def __repr__(self):
         return '\n\n'.join(map(repr, self.subs))
@@ -316,18 +328,23 @@ def parse_args(args):
     )
 
     parser.add_argument(
-        '-f', '--config-file',
-        help='overwrite the default config file (Unix: $HOME/.config/fsubrc,' +
-             r' Windows: %%APPDATA%%\fsubrc)',
-        metavar='FILE',
+        '-f', '--config',
+        help='use F as the config file (by default, F is: ' +
+             r'on Unix: $HOME/.config/fsubrc; on Windows: %%APPDATA%%\fsubrc)',
+        metavar='F',
         action='store',
         type=argparse.FileType('r')
     )
 
     parser.add_argument(
         '-j', '--join',
-        help='join all files into the first, shifting their time ' +
-             'accordingly (this will delete files)',
+        help='join all files into the first, shifting their time accordingly',
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '-r', '--replace',
+        help='edit files in-place (-j will delete joined files too)',
         action='store_true'
     )
 
@@ -342,11 +359,12 @@ def parse_args(args):
     args = parser.parse_args(args)
 
     # Make sure --clean is the default
+    # TODO: account for new options
     if not args.shift and not args.no_html:
         args.clean = True
 
     # Validate options
-    if not args.clean and args.config_file:
+    if not args.clean and args.config:
         panic('-f requires -c', 1)
 
     return args
@@ -364,7 +382,9 @@ def run(args):
         first = parsed_files.pop(0)
         while True:
             try:
-                first += parsed_files.pop(0)
+                file = parsed_files.pop(0)
+                first += file
+                file.delete()
             except IndexError:
                 break
         parsed_files.append(first)
