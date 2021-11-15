@@ -229,6 +229,12 @@ class SubripFile:
             self.subs.append(sub)
             line_number += len(sub) + 1
 
+    def __iadd__(self, other):
+        shift_time = self.subs[-1].time_end
+        other.shift(shift_time)
+        self.subs += other.subs
+        return self
+
     def clean(self, expressions):
         if len(expressions) == 0:
             return
@@ -319,6 +325,13 @@ def parse_args(args):
     )
 
     parser.add_argument(
+        '-j', '--join',
+        help='join all files into the first, shifting their time ' +
+             'accordingly (this will delete files)',
+        action='store_true'
+    )
+
+    parser.add_argument(
         'files',
         help='list of input files (they all must be SubRip files)',
         metavar='file',
@@ -347,14 +360,22 @@ def run(args):
     for file in args.files:
         parsed_files.append(SubripFile(file))
 
-    # TODO: join, split files
+    if args.join:
+        first = parsed_files.pop(0)
+        while True:
+            try:
+                first += parsed_files.pop(0)
+            except IndexError:
+                break
+        parsed_files.append(first)
 
     for file in parsed_files:
         file.process(args, config)
 
 
 def main():
-    run(list(iter(sys.argv).next()))
+    sys.argv.pop(0)
+    run(sys.argv)
 
 
 if __name__ == '__main__':
