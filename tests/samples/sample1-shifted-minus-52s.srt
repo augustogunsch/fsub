@@ -1,0 +1,14 @@
+1
+00:00:01,500 --> 00:00:03,200
+<html>The script should not
+care whether the tag is
+valid or not</html>
+
+2
+00:00:04,000 --> 00:00:05,000
+<p>It should just strip all of
+them mercilessly</p>
+
+3
+00:00:06,100 --> 00:00:07,600
+<ul>Including this one!</ul>

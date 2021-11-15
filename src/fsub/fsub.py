@@ -37,37 +37,35 @@ def panic(message, code):
 
 class TimeStamp:
     def __init__(self, time_str):
-        parsed_time = time_str.split(':')
-        h = int(parsed_time[0])
-        m = int(parsed_time[1])
-        ms = int(parsed_time[2].replace(',', ''))
-        self.time = h * 3600000 + m * 60000 + ms
+        m = re.match(r'(\d{2,}):(\d{2}):(\d{2}),(\d{3})', time_str)
+        if not m:
+            raise Exception
+
+        h, m, s, ms = map(int, m.groups())
+        self.time = h * 3600000 + m * 60000 + s * 1000 + ms
 
     def getmilliseconds(self):
         return self.time % 1000
 
     def getseconds(self):
-        return (self.time % 60000) / 1000
+        return int((self.time % 60000) / 1000)
 
     def getminutes(self):
-        return (self.time / 60000) % 60
+        return int((self.time / 60000) % 60)
 
     def gethours(self):
-        return self.time / 3600000
+        return int(self.time / 3600000)
 
     millisecods = property(getmilliseconds)
     seconds = property(getseconds)
     minutes = property(getminutes)
     hours = property(gethours)
 
+    def __int__(self):
+        return self.time
+
     def __iadd__(self, other):
-        t = type(other)
-        if t is int:
-            self.time += other
-        elif t is type(self):
-            self.time += other.time
-        else:
-            raise TypeError
+        self.time += int(other)
         return self
 
     def __neg__(self):
@@ -79,19 +77,19 @@ class TimeStamp:
         return self.__iadd__(-other)
 
     def __lt__(self, other):
-        return self.time < other.time
+        return self.time < int(other)
 
     def __le__(self, other):
-        return self.time <= other.time
+        return self.time <= int(other)
 
     def __eq__(self, other):
-        return self.time == other.time
+        return self.time == int(other)
 
     def __gt__(self, other):
-        return self.time > other.time
+        return self.time > int(other)
 
     def __ge__(self, other):
-        return self.time >= other.time
+        return self.time >= int(other)
 
     def __repr__(self):
         return '%02d:%02d:%02d,%03d' % \
@@ -107,6 +105,7 @@ class Subtitle:
         try:
             # This is mostly ignored, as the subtitles are renumbered later
             self.number = int(lines.pop(0))
+            assert self.number > 0
         except Exception:
             panic('Invalid line number detected ({}:{})'
                   .format(file_name, line_number), 1)
@@ -140,12 +139,12 @@ class Subtitle:
         self.time_end += ms
 
     def replace(self, pattern, new_content):
-        for line in self.content:
-            line = pattern.replace(new_content, line)
+        self.content = \
+         list(map(lambda line: pattern.sub(new_content, line), self.content))
 
     def matches(self, regexp):
         for line in self.content:
-            if regexp.findall(line):
+            if regexp.search(line):
                 return True
         return False
 
@@ -272,14 +271,15 @@ class SubripFile:
     def write_file(self):
         output = open(self.file_name, 'w', encoding='utf-8')
         output.write(repr(self))
-        output.write('\n')
+        if len(self.subs) > 0:
+            output.write('\n')
         output.close()
 
     def __repr__(self):
         return '\n\n'.join(map(repr, self.subs))
 
 
-def main():
+def parse_args(args):
     parser = argparse.ArgumentParser(
         prog='fsub',
         description='Fix, edit and clean SubRip (.srt) files.',
@@ -326,7 +326,7 @@ def main():
         nargs='+'
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Make sure --clean is the default
     if not args.shift and not args.no_html:
@@ -336,6 +336,11 @@ def main():
     if not args.clean and args.config_file:
         panic('-f requires -c', 1)
 
+    return args
+
+
+def run(args):
+    args = parse_args(args)
     config = ConfigFile(args)
 
     parsed_files = []
@@ -346,6 +351,10 @@ def main():
 
     for file in parsed_files:
         file.process(args, config)
+
+
+def main():
+    run(list(iter(sys.argv).next()))
 
 
 if __name__ == '__main__':
