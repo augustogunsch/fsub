@@ -9,7 +9,7 @@ pip install fsub
 
 # Usage
 ```
-usage: fsub [-h] [-c] [-s MS] [-n] [-f FILE] file [file ...]
+usage: fsub [-h] [-c] [-s MS] [-n] [-f FILE] [-j] file [file ...]
 
 Fix, edit and clean SubRip (.srt) files.
 
@@ -26,6 +26,19 @@ optional arguments:
   -f FILE, --config-file FILE
                         overwrite the default config file (Unix: $HOME/.config/fsubrc,
                         Windows: %APPDATA%\fsubrc)
+  -j, --join            join all files into the first, shifting their time accordingly (this
+                        will delete files)
+```
+
+# Testing
+Run all the tests with:
+```
+python -m unittest tests
+```
+Or, just the unit/integration tests:
+```
+python -m unittest tests.unit
+python -m unittest tests.integration
 ```
 
 # Features
