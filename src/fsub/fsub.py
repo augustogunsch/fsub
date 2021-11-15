@@ -26,64 +26,122 @@ import argparse
 import re
 import chardet
 import os
-import pathlib
+import copy
+from pathlib import Path, PosixPath
 
 
-class Time:
-    def __init__(self, time_str, file_name, line_number):
+def panic(message, code):
+    print(message, file=sys.stderr)
+    sys.exit(code)
+
+
+class TimeStamp:
+    def __init__(self, time_str):
         parsed_time = time_str.split(':')
-        try:
-            h = int(parsed_time[0])
-            m = int(parsed_time[1])
-            ms = int(parsed_time[2].replace(',', ''))
-            # self.time: time in milliseconds
-            self.time = h * 3600000 + m * 60000 + ms
-        except Exception:
-            print('Invalid time format detected ({}:{})'
-                  .format(file_name, line_number),
-                  file=sys.stderr)
-            sys.exit(1)
+        h = int(parsed_time[0])
+        m = int(parsed_time[1])
+        ms = int(parsed_time[2].replace(',', ''))
+        self.time = h * 3600000 + m * 60000 + ms
 
-    def add(self, ms):
-        self.time += ms
+    def getmilliseconds(self):
+        return self.time % 1000
+
+    def getseconds(self):
+        return (self.time % 60000) / 1000
+
+    def getminutes(self):
+        return (self.time / 60000) % 60
+
+    def gethours(self):
+        return self.time / 3600000
+
+    millisecods = property(getmilliseconds)
+    seconds = property(getseconds)
+    minutes = property(getminutes)
+    hours = property(gethours)
+
+    def __iadd__(self, other):
+        t = type(other)
+        if t is int:
+            self.time += other
+        elif t is type(self):
+            self.time += other.time
+        else:
+            raise TypeError
+        return self
+
+    def __neg__(self):
+        new = copy.deepcopy(self)
+        new.time = -new.time
+        return new
+
+    def __isub__(self, other):
+        return self.__iadd__(-other)
+
+    def __lt__(self, other):
+        return self.time < other.time
+
+    def __le__(self, other):
+        return self.time <= other.time
+
+    def __eq__(self, other):
+        return self.time == other.time
+
+    def __gt__(self, other):
+        return self.time > other.time
+
+    def __ge__(self, other):
+        return self.time >= other.time
 
     def __repr__(self):
-        ms = self.time % 1000
-        s = (self.time % 60000) / 1000
-        m = (self.time / 60000) % 60
-        h = self.time / 3600000
-        return '%02d:%02d:%02d,%03d' % (h, m, s, ms)
+        return '%02d:%02d:%02d,%03d' % \
+         (self.hours, self.minutes, self.seconds, self.millisecods)
 
 
 class Subtitle:
+    # Parse a single subtitle
     def __init__(self, lines, file_name, line_number):
+        if type(lines) is str:
+            lines = lines.splitlines()
+
         try:
             # This is mostly ignored, as the subtitles are renumbered later
             self.number = int(lines.pop(0))
         except Exception:
-            print('Invalid line number detected ({}:{})'
-                  .format(file_name, line_number),
-                  file=sys.stderr)
-            sys.exit(1)
+            panic('Invalid line number detected ({}:{})'
+                  .format(file_name, line_number), 1)
 
         line_number += 1
 
         try:
             time_span = lines.pop(0).split(' --> ')
-
-            self.time_start = Time(time_span[0], file_name, line_number)
-            self.time_end = Time(time_span[1], file_name, line_number)
         except Exception:
-            print('Invalid time span format detected ({}:{})'
-                  .format(file_name, line_number),
-                  file=sys.stderr)
-            sys.exit(1)
+            panic('Invalid time span format detected ({}:{})'
+                  .format(file_name, line_number), 1)
+
+        try:
+            self.time_start = TimeStamp(time_span[0])
+            self.time_end = TimeStamp(time_span[1])
+        except Exception:
+            panic('Invalid time stamp detected ({}:{})'
+                  .format(file_name, line_number), 1)
+
+        if self.time_start >= self.time_end:
+            panic('End time must be greater than start time ({}:{})'
+                  .format(file_name, line_number), 1)
 
         self.content = lines
 
+    def __len__(self):
+        return len(self.content) + 2
+
     def shift(self, ms):
-        self.time_start.add(ms)
-        self.time_end.add(ms)
+        self.time_start += ms
+        self.time_end += ms
+
+    def replace(self, pattern, new_content):
+        for line in self.content:
+            line = pattern.replace(new_content, line)
 
     def matches(self, regexp):
         for line in self.content:
@@ -99,114 +157,126 @@ class Subtitle:
         )
 
 
-def clean(subs, expressions):
-    # Cancel if no expression
-    if len(expressions) == 0:
-        return subs
+class ConfigFile:
+    def __init__(self, args):
+        # No reason to continue
+        if not args.clean:
+            if args.config_file:
+                args.config_file.close()
+            self.expressions = []
+            return
 
-    # Remove lines matching any expression
-    for regexp in expressions:
-        subs = filter(lambda sub: not sub.matches(regexp), subs)
+        file = args.config_file
+        # Set default config file if not specified
+        if not file:
+            home = Path.home()
 
-    return list(subs)
+            if type(home) is PosixPath:
+                self.file_path = home / '.config' / 'fsubrc'
+            else:
+                self.file_path = Path(os.getenv('APPDATA')) / 'fsubrc'
 
-
-def shift(subs, ms):
-    for sub in subs:
-        sub.shift(ms)
-    return list(filter(lambda sub: sub.time_start.time >= 0, subs))
-
-
-def strip_html(subs):
-    for sub in subs:
-        for i in range(0, len(sub.content)):
-            sub.content[i] = re.sub('<.+?>', '', sub.content[i])
-
-
-def process_file(args, file, expressions):
-    # Read the input file
-    contents = file.read()
-    file.close()
-
-    # Decode the file contents
-    encoding = chardet.detect(contents)['encoding']
-    if encoding is None:
-        print('Corrupt or empty file ({})'.format(file.name),
-              file=sys.stderr)
-        sys.exit(1)
-    contents = contents.decode(encoding)
-
-    # Count empty lines at the beginning
-    r = re.compile(r'\r?\n')
-    line_number = 1
-    for line in r.split(contents):
-        if len(line) == 0 or line.isspace():
-            line_number += 1
-        else:
-            break
-
-    # Split subtitles on empty lines
-    subs = re.split(r'(?:\r?\n){2}', contents.strip())
-
-    # Create Subtitle objects
-    subs_objs = []
-    for sub in subs:
-        lines = list(r.split(sub))
-        subs_objs.append(Subtitle(lines, file.name, line_number))
-        line_number += len(lines) + 3
-
-    # Clean if --clean is passed
-    if args.clean:
-        subs_objs = clean(subs_objs, expressions)
-
-    # Shift if --shift is passed
-    if args.shift:
-        subs_objs = shift(subs_objs, args.shift)
-
-    # Strip HTML if --no-html is passed
-    if args.no_html:
-        strip_html(subs_objs)
-
-    # Fix numbering
-    i = 1
-    for sub in subs_objs:
-        sub.number = i
-        i += 1
-
-    # Join Subtitle objects back to a string
-    contents = '\n\n'.join(map(repr, subs_objs))
-
-    # Write output
-    output = open(file.name, 'w', encoding='utf-8')
-    output.write(contents)
-    output.write('\n')
-    output.close()
-
-
-def read_expressions(args):
-    if args.clean:
-        cfg = args.config_file
-
-        # Open default config file if not specified
-        if not args.config_file:
-            home = pathlib.Path.home()
             try:
-                if type(home) is pathlib.PosixPath:
-                    cfg = open(str(home) + '/.config/fsubrc', 'r')
-                elif type(home) is pathlib.WindowsPath:
-                    cfg = open(os.getenv('APPDATA') + r'\fsubrc', 'r')
-                else:
-                    print('Unsupported operating system', file=sys.stderr)
-                    sys.exit(1)
-            except FileNotFoundError:
-                return []
+                self.file_path.touch()
+                file = self.file_path.open(mode='r')
+            except PermissionError:
+                panic('Can\'t access file {}: Permission denied'
+                      .format(self.file_path), 1)
+        else:
+            self.file_path = Path(file.name)
 
         # Read expressions
-        lines = re.split(r'\r?\n', cfg.read().strip())
-        expressions = list(map(re.compile, lines))
-        cfg.close()
-        return expressions
-    return []
+        lines = file.read().strip().splitlines()
+        file.close()
+        self.expressions = list(map(re.compile, lines))
+
+
+class SubripFile:
+    def read_file(file):
+        # Check extension
+        if file.name[-4:] != '.srt':
+            panic('File {} is not a SubRip file'.format(file.name), 1)
+
+        # Read the input file
+        contents = file.read()
+        file.close()
+
+        # Decode the file contents
+        encoding = chardet.detect(contents)['encoding']
+        if encoding is None:
+            panic('Corrupt or empty file ({})'.format(file.name), 1)
+        return contents.decode(encoding)
+
+    # This method parses the file
+    def __init__(self, file):
+        self.file_name = file.name
+        contents = SubripFile.read_file(file)
+
+        # Count empty lines at the beginning
+        line_number = 1
+        for line in contents.splitlines():
+            if len(line) == 0 or line.isspace():
+                line_number += 1
+            else:
+                break
+
+        # Split subtitles on empty lines
+        chunks = re.split(r'(?:\r?\n){2}', contents.strip())
+
+        # Create Subtitle objects
+        self.subs = []
+        for lines in chunks:
+            sub = Subtitle(lines, self.file_name, line_number)
+            self.subs.append(sub)
+            line_number += len(sub) + 1
+
+    def clean(self, expressions):
+        if len(expressions) == 0:
+            return
+
+        # Remove lines matching any expression
+        for regexp in expressions:
+            subs = filter(lambda sub: not sub.matches(regexp), self.subs)
+
+        self.subs = list(subs)
+
+    def shift(self, ms):
+        for sub in self.subs:
+            sub.shift(ms)
+        self.subs = list(filter(lambda sub: sub.time_start >= 0, self.subs))
+
+    def strip_html(self):
+        p = re.compile('<.+?>')
+        for sub in self.subs:
+            sub.replace(p, '')
+
+    def renumber(self):
+        i = 1
+        for sub in self.subs:
+            sub.number = i
+            i += 1
+
+    def process(self, args, config):
+        if args.clean:
+            self.clean(config.expressions)
+
+        if args.shift:
+            self.shift(args.shift)
+
+        if args.no_html:
+            self.strip_html()
+
+        self.renumber()
+        self.write_file()
+
+    def write_file(self):
+        output = open(self.file_name, 'w', encoding='utf-8')
+        output.write(repr(self))
+        output.write('\n')
+        output.close()
+
+    def __repr__(self):
+        return '\n\n'.join(map(repr, self.subs))
 
 
 def main():
@@ -264,20 +334,18 @@ def main():
 
     # Validate options
     if not args.clean and args.config_file:
-        print('-f requires -c', file=sys.stderr)
-        exit(1)
+        panic('-f requires -c', 1)
 
-    # Check if all files are .srt
+    config = ConfigFile(args)
+
+    parsed_files = []
     for file in args.files:
-        if file.name[-4:] != '.srt':
-            print('File {} is not a SubRip file'.format(file.name),
-                  file=sys.stderr)
-            sys.exit(1)
+        parsed_files.append(SubripFile(file))
 
-    expressions = read_expressions(args)
+    # TODO: join, split files
 
-    for file in args.files:
-        process_file(args, file, expressions)
+    for file in parsed_files:
+        file.process(args, config)
 
 
 if __name__ == '__main__':
