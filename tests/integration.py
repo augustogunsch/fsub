@@ -26,18 +26,17 @@ class TestFsub(unittest.TestCase):
 
         limit = len(ofiles)
         for i, ifile in enumerate(ifiles):
-            if i == limit:
-                break
-            out = open(ifile)
-            result = out.read()
-            out.close()
+            if i < limit:
+                out = open(ifile)
+                result = out.read()
+                out.close()
 
-            ofile = str(self.samples / ofiles[i]) + '.srt'
-            cmp_file = open(ofile)
-            cmp = cmp_file.read()
-            cmp_file.close()
+                ofile = str(self.samples / ofiles[i]) + '.srt'
+                cmp_file = open(ofile)
+                cmp = cmp_file.read()
+                cmp_file.close()
 
-            self.assertEqual(result, cmp)
+                self.assertEqual(result, cmp)
             os.remove(ifile)
 
     def test_cleaned(self):
