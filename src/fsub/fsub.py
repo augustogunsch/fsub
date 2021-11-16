@@ -241,9 +241,7 @@ class SubripFile:
 
         # Remove lines matching any expression
         for regexp in expressions:
-            subs = filter(lambda sub: not sub.matches(regexp), self.subs)
-
-        self.subs = list(subs)
+            self.subs = [sub for sub in self.subs if not sub.matches(regexp)]
 
     def shift(self, ms):
         for sub in self.subs:

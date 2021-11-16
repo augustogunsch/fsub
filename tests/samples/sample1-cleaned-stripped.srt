@@ -4,16 +4,10 @@ This one is full of HTML tags.
 Above, below, everywhere
 
 2
-00:00:53,500 --> 00:00:55,200
-The script should not
-care whether the tag is
-valid or not
-
-3
 00:00:56,000 --> 00:00:57,000
 It should just strip all of
 them mercilessly
 
-4
+3
 00:00:58,100 --> 00:00:59,600
 Including this one!
