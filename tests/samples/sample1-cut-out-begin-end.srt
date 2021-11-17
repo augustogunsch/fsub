@@ -1,0 +1,14 @@
+1
+00:00:51,800 --> 00:00:52,700
+<a href='dummy'>Even <a>'s!</a>
+
+2
+00:00:53,500 --> 00:00:55,200
+<html>The script should not
+care whether the tag is
+valid or not</html>
+
+3
+00:00:56,000 --> 00:00:57,000
+<p>It should just strip all of
+them mercilessly</p>

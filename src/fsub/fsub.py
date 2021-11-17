@@ -96,6 +96,30 @@ class TimeStamp:
          (self.hours, self.minutes, self.seconds, self.millisecods)
 
 
+class SectionMarker:
+    def __init__(self, arg):
+        try:
+            self.marker = TimeStamp(arg)
+        except Exception:
+            try:
+                self.marker = int(arg)
+            except Exception:
+                panic('Invalid section marker argument', 1)
+
+    def include_after(self, other):
+        if type(self.marker) is TimeStamp:
+            return other.time_start >= self.marker
+        return other.number >= self.marker
+
+    def include_before(self, other):
+        if type(self.marker) is TimeStamp:
+            return other.time_end <= self.marker
+        return other.number <= self.marker
+
+    def __le__(self, other):
+        return int(self) <= int(other)
+
+
 class Subtitle:
     # Parse a single subtitle
     def __init__(self, lines, file_name, line_number):
@@ -235,18 +259,10 @@ class SubripFile:
         self.subs += other.subs
         return self
 
-    def clean(self, expressions):
-        if len(expressions) == 0:
-            return
-
-        # Remove lines matching any expression
-        for regexp in expressions:
-            self.subs = [sub for sub in self.subs if not sub.matches(regexp)]
-
     def shift(self, ms):
         for sub in self.subs:
             sub.shift(ms)
-        self.subs = list(filter(lambda sub: sub.time_start >= 0, self.subs))
+        self.subs = [sub for sub in self.subs if sub.time_start >= 0]
 
     def strip_html(self):
         p = re.compile('<.+?>')
@@ -260,26 +276,54 @@ class SubripFile:
             i += 1
 
     def process(self, args, config):
-        if args.clean:
-            self.clean(config.expressions)
+        html_regex = re.compile('<.+?>')
+        new_subs = []
+        for sub in self.subs:
+            if args.begin and not args.begin.include_after(sub):
+                new_subs.append(sub)
+                continue
 
-        if args.shift:
-            self.shift(args.shift)
+            if args.end and not args.end.include_before(sub):
+                new_subs.append(sub)
+                continue
 
-        if args.no_html:
-            self.strip_html()
+            if args.clean and len(config.expressions) > 0:
+                if any(sub.matches(regex) for regex in config.expressions):
+                    continue
 
-        self.renumber()
+            if args.shift:
+                sub.shift(args.shift)
+                if sub.time_start < 0:
+                    continue
+
+            if args.no_html:
+                sub.replace(html_regex, '')
+
+            new_subs.append(sub)
+
+        self.subs = new_subs
+
         self.write_file(args.replace)
 
     def write_file(self, in_place=False, stdout=False):
+        self.renumber()
+
         if stdout:
             print(self)
             return
 
-        file = self.file_name if in_place else 'out-' + self.file_name
+        try:
+            if in_place:
+                path = self.file_name
+                output = open(path, 'w', encoding='utf-8')
+            else:
+                path = Path(self.file_name)
+                path = path.with_name('out-' + path.name)
+                output = path.open(mode='w', encoding='utf-8')
+        except PermissionError:
+            panic('Can\'t access file {}: Permission denied'
+                  .format(path), 1)
 
-        output = open(file, 'w', encoding='utf-8')
         output.write(repr(self))
 
         if len(self.subs) > 0:
@@ -290,6 +334,12 @@ class SubripFile:
     def delete(self):
         os.remove(self.file_name)
         del self
+
+    def trunc_before(self, marker):
+        self.subs = [sub for sub in self.subs if marker.include_after(sub)]
+
+    def trunc_after(self, marker):
+        self.subs = [sub for sub in self.subs if marker.include_before(sub)]
 
     def __repr__(self):
         return '\n\n'.join(map(repr, self.subs))
@@ -302,29 +352,6 @@ def parse_args(args):
         add_help=True
     )
 
-    parser.add_argument(
-        '-c', '--clean',
-        help='remove subtitles matching regular expressions ' +
-             'listed in the config file (this is the default ' +
-             'behavior if no other flag is passed)',
-        action='store_true'
-    )
-
-    parser.add_argument(
-        '-s', '--shift',
-        help='shift all subtitles by MS milliseconds, which ' +
-             'may be positive or negative',
-        metavar='MS',
-        action='store',
-        type=int
-    )
-
-    parser.add_argument(
-        '-n', '--no-html',
-        help='strip HTML tags from subtitles content',
-        action='store_true'
-    )
-
     # Requires --clean
     parser.add_argument(
         '-f', '--config',
@@ -335,18 +362,45 @@ def parse_args(args):
         type=argparse.FileType('r')
     )
 
-    parser.add_argument(
+    processing = parser.add_argument_group(
+        'processing',
+        'Flags that specify an action to be taken. Many may ' +
+        'be specified.'
+    )
+
+    processing.add_argument(
+        '-c', '--clean',
+        help='remove subtitles matching regular expressions ' +
+             'listed in the config file (this is the default ' +
+             'behavior if no other flag is passed)',
+        action='store_true'
+    )
+
+    processing.add_argument(
+        '-s', '--shift',
+        help='shift all subtitles by MS milliseconds, which ' +
+             'may be positive or negative',
+        metavar='MS',
+        action='store',
+        type=int
+    )
+
+    processing.add_argument(
+        '-n', '--no-html',
+        help='strip HTML tags from subtitles content',
+        action='store_true'
+    )
+
+    processing.add_argument(
         '-j', '--join',
         help='join all files into the first, shifting their time accordingly',
         action='store_true'
     )
 
-    # Requires --begin
-    parser.add_argument(
+    # Requires --begin or --end, may have both
+    processing.add_argument(
         '-u', '--cut-out',
-        help='cut out the specified section from the file(s), creating ' +
-             'for every input file a new one prefixed with "cut-" ' +
-             '(--join will join both the input files and the cutouts)',
+        help='cut the specified section from the file(s) into new files',
         action='store_true'
     )
 
@@ -385,28 +439,38 @@ def parse_args(args):
 
     section.add_argument(
         '-b', '--begin',
-        help='specify section beginning (by default, beginning of file)',
+        help='specify section beginning (inclusive)',
         metavar='B',
         action='store'
     )
 
     section.add_argument(
         '-e', '--end',
-        help='specify section end (by default, end of file)',
+        help='specify section end (inclusive)',
         metavar='E',
         action='store'
     )
 
     args = parser.parse_args(args)
 
+    # Flags that require section
+    if args.cut_out:
+        if not args.begin and not args.end:
+            panic('You must specify a section to work with', 1)
+
     # Make sure --clean is the default
-    # TODO: account for new options
-    if not args.shift and not args.no_html:
+    if not any((args.shift, args.no_html, args.join, args.cut_out)):
         args.clean = True
 
     # Validate options
     if not args.clean and args.config:
         panic('-f requires -c', 1)
+
+    if args.begin:
+        args.begin = SectionMarker(args.begin)
+
+    if args.end:
+        args.end = SectionMarker(args.end)
 
     return args
 
@@ -419,6 +483,15 @@ def run(args):
     for file in args.files:
         parsed_files.append(SubripFile(file))
 
+    if args.cut_out:
+        if args.begin:
+            for file in parsed_files:
+                file.trunc_before(args.begin)
+
+        if args.end:
+            for file in parsed_files:
+                file.trunc_after(args.end)
+
     if args.join:
         first = parsed_files.pop(0)
         while True:
@@ -429,7 +502,6 @@ def run(args):
             except IndexError:
                 break
         parsed_files.append(first)
-        first.renumber()
 
     for file in parsed_files:
         file.process(args, config)

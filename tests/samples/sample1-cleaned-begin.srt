@@ -1,0 +1,17 @@
+1
+00:00:48,900 --> 00:00:49,800
+<b>This one is full of HTML tags.</b>
+<i>Above, below, everywhere</i>
+
+2
+00:00:51,800 --> 00:00:52,700
+<a href='dummy'>Even <a>'s!</a>
+
+3
+00:00:56,000 --> 00:00:57,000
+<p>It should just strip all of
+them mercilessly</p>
+
+4
+00:00:58,100 --> 00:00:59,600
+<ul>Including this one!</ul>
