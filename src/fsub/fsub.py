@@ -498,7 +498,8 @@ def run(args):
             try:
                 file = parsed_files.pop(0)
                 first += file
-                file.delete()
+                if args.replace:
+                    file.delete()
             except IndexError:
                 break
         parsed_files.append(first)
