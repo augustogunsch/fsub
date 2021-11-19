@@ -44,22 +44,22 @@ class TimeStamp:
         h, m, s, ms = map(int, m.groups())
         self.time = h * 3600000 + m * 60000 + s * 1000 + ms
 
-    def getmilliseconds(self):
+    def get_milliseconds(self):
         return self.time % 1000
 
-    def getseconds(self):
+    def get_seconds(self):
         return int((self.time % 60000) / 1000)
 
-    def getminutes(self):
+    def get_minutes(self):
         return int((self.time / 60000) % 60)
 
-    def gethours(self):
+    def get_hours(self):
         return int(self.time / 3600000)
 
-    millisecods = property(getmilliseconds)
-    seconds = property(getseconds)
-    minutes = property(getminutes)
-    hours = property(gethours)
+    millisecods = property(get_milliseconds)
+    seconds = property(get_seconds)
+    minutes = property(get_minutes)
+    hours = property(get_hours)
 
     def __int__(self):
         return self.time
@@ -104,7 +104,7 @@ class SectionMarker:
             try:
                 self.marker = int(arg)
             except Exception:
-                panic('Invalid section marker argument', 1)
+                panic('Invalid section marker argument', 65)
 
     def include_after(self, other):
         if type(self.marker) is TimeStamp:
@@ -132,7 +132,7 @@ class Subtitle:
             assert self.number > 0
         except Exception:
             panic('Invalid line number detected ({}:{})'
-                  .format(file_name, line_number), 1)
+                  .format(file_name, line_number), 65)
 
         line_number += 1
 
@@ -140,18 +140,18 @@ class Subtitle:
             time_span = lines.pop(0).split(' --> ')
         except Exception:
             panic('Invalid time span format detected ({}:{})'
-                  .format(file_name, line_number), 1)
+                  .format(file_name, line_number), 65)
 
         try:
             self.time_start = TimeStamp(time_span[0])
             self.time_end = TimeStamp(time_span[1])
         except Exception:
             panic('Invalid time stamp detected ({}:{})'
-                  .format(file_name, line_number), 1)
+                  .format(file_name, line_number), 65)
 
         if self.time_start >= self.time_end:
             panic('End time must be greater than start time ({}:{})'
-                  .format(file_name, line_number), 1)
+                  .format(file_name, line_number), 65)
 
         self.content = lines
 
@@ -204,7 +204,7 @@ class ConfigFile:
                 file = self.file_path.open(mode='r')
             except PermissionError:
                 panic('Can\'t access file {}: Permission denied'
-                      .format(self.file_path), 1)
+                      .format(self.file_path), 77)
         else:
             self.file_path = Path(file.name)
 
@@ -218,7 +218,7 @@ class SubripFile:
     def read_file(file):
         # Check extension
         if file.name[-4:] != '.srt':
-            panic('File {} is not a SubRip file'.format(file.name), 1)
+            panic('File {} is not a SubRip file'.format(file.name), 64)
 
         # Read the input file
         contents = file.read()
@@ -227,7 +227,7 @@ class SubripFile:
         # Decode the file contents
         encoding = chardet.detect(contents)['encoding']
         if encoding is None:
-            panic('Corrupt or empty file ({})'.format(file.name), 1)
+            panic('Corrupt or empty file ({})'.format(file.name), 66)
         return contents.decode(encoding)
 
     # This method parses the file
@@ -456,7 +456,7 @@ def parse_args(args):
     # Flags that require section
     if args.cut_out:
         if not args.begin and not args.end:
-            panic('You must specify a section to work with', 1)
+            panic('You must specify a section to work with', 64)
 
     # Make sure --clean is the default
     if not any((args.shift, args.no_html, args.join, args.cut_out)):
@@ -464,7 +464,7 @@ def parse_args(args):
 
     # Validate options
     if not args.clean and args.config:
-        panic('-f requires -c', 1)
+        panic('-f requires -c', 64)
 
     if args.begin:
         args.begin = SectionMarker(args.begin)
@@ -494,14 +494,13 @@ def run(args):
 
     if args.join:
         first = parsed_files.pop(0)
-        while True:
-            try:
-                file = parsed_files.pop(0)
-                first += file
-                if args.replace:
-                    file.delete()
-            except IndexError:
-                break
+
+        for file in parsed_files:
+            first += file
+            if args.replace:
+                file.delete()
+
+        parsed_files.clear()
         parsed_files.append(first)
 
     for file in parsed_files:
