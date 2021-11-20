@@ -9,6 +9,8 @@ pip install fsub
 
 # Usage
 ```
+usage: fsub [-h] [-f F] [-c] [-s MS] [-n] [-j] [-u] [-r | -p] [-b B] [-e E] file [file ...]
+
 Fix, edit and clean SubRip (.srt) files.
 
 positional arguments:
@@ -62,3 +64,4 @@ python -m unittest tests.integration
 - May strip HTML
 - May join files together
 - May edit files in-place
+- May cut sections out
