@@ -55,6 +55,15 @@ python -m unittest tests.unit
 python -m unittest tests.integration
 ```
 
+# Scripted API
+An example of calling the program from Python:
+```
+import fsub
+
+# Pass the arguments here
+fsub.run(['-c', 'test.srt'])
+```
+
 # Features
 - Fixes subtitle numbering
 - Converts files to UTF-8 encoding

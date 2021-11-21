@@ -1,4 +1,4 @@
-import fsub
+import fsub.fsub as fsub
 
 
 # External interface
