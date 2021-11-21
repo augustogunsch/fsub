@@ -303,7 +303,7 @@ class SubripFile:
 
         self.subs = new_subs
 
-        self.write_file(args.replace)
+        self.write_file(in_place=args.replace, stdout=args.stdout)
 
     def write_file(self, in_place=False, stdout=False):
         self.renumber()
@@ -456,15 +456,17 @@ def parse_args(args):
     # Flags that require section
     if args.cut_out:
         if not args.begin and not args.end:
-            panic('You must specify a section to work with', 64)
+            parser.print_usage(file=sys.stderr)
+            panic('fsub: error: You must specify a section to work with', 64)
+
+    # Validate options
+    if not args.clean and args.config:
+        parser.print_usage(file=sys.stderr)
+        panic('fsub: error: --config requires --clean', 64)
 
     # Make sure --clean is the default
     if not any((args.shift, args.no_html, args.join, args.cut_out)):
         args.clean = True
-
-    # Validate options
-    if not args.clean and args.config:
-        panic('-f requires -c', 64)
 
     if args.begin:
         args.begin = SectionMarker(args.begin)

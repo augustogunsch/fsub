@@ -60,8 +60,7 @@ An example of calling the program from Python:
 ```
 import fsub
 
-# Pass the arguments here
-fsub.run(['-c', 'test.srt'])
+fsub.run('-c', 'test.srt')
 ```
 
 # Features
